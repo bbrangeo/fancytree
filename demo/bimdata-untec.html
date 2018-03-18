@@ -138,6 +138,11 @@ $(function(){
 
 	var projectData = {cloudId: cloudId, projectId: projectId, ifcId: ifcId};
 
+	function entierAleatoire(min, max)
+	{
+	 return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+
 	function createZonesTree(zones){
 		var menu = [];
 		
@@ -255,6 +260,7 @@ $(function(){
 	    		// Static markup (more efficiently defined as html row template):
 	    		// $tdList.eq(3).html("<input type='input' value='" + "" + "'>");
 	    		// ...
+	    		$tdList.eq(7).html(entierAleatoire(1, 50) + ' m<sup>2</sup>');
 	    	}
 	    }).on("nodeCommand", function(event, data){
 	    	// Custom event handler that is triggered by keydown-handler and
@@ -503,6 +509,7 @@ $(function(){
 				<td class="add action onhover zoneonly"><span>+</span></td>
 				<td class="color action zoneonly"></td>
 				<td class="delete action">Del</td>
+				<td class="surface">Surface</td>
 			</tr>
 		</tbody>
 	</table>
