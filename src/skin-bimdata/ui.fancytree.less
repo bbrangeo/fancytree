@@ -1,3 +1,4 @@
+.bimviewer {
  /*!
  * Fancytree "Lion" skin.
  *
@@ -70,15 +71,20 @@ span.fancytree-selected span.fancytree-title {
  */
 table.fancytree-ext-table {
 	border-collapse: collapse;
+	font-size: 0.9em;
 	tbody {
+			tr td {
+				border-bottom: solid 1px white;
+				height: 0px;
+			}
 	    tr.fancytree-focused {
-			background-color: #99DEFD;
+			background-color: none;
 		}
 	    tr.fancytree-active {
-			background-color: royalblue;
+			background-color: #e2e2e2;
 		}
 	    tr.fancytree-selected {
-			background-color: #99DEFD;
+			background-color: #e2e2e2;
 		}
 	}
 }
@@ -95,4 +101,6 @@ table.fancytree-ext-columnview span.fancytree-node.fancytree-expanded {
 }
 table.fancytree-ext-columnview span.fancytree-node.fancytree-active {
 	background-color: royalblue;
+}
+
 }
