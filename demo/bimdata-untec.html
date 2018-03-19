@@ -8,6 +8,9 @@
 	<script src="//code.jquery.com/jquery-3.2.1.min.js"></script>
 	<script src="//code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
+	<script src="untec_menu.js"></script>
+	<script src="untec_result.js"></script>
+
 	<!-- jquery-contextmenu (https://github.com/mar10/jquery-ui-contextmenu/) -->
 	<script src="//cdn.jsdelivr.net/npm/ui-contextmenu/jquery.ui-contextmenu.min.js"></script>
 
@@ -29,7 +32,7 @@
 	<script src="../lib/prettify.js"></script>
 	<link href="../demo/sample.css" rel="stylesheet">
 	<script src="../demo/sample.js"></script>
-	<script src="http://viewer.test/dist/css/bimviewer.min.css"></script>
+	<link href="http://viewer.test/dist/css/bimviewer.min.css" rel="stylesheet"></link>
 	<!-- End_Exclude -->
 
 <style type="text/css">
@@ -39,9 +42,6 @@
 	}
 	.ui-menu kbd { /* Keyboard shortcuts for ui-contextmenu titles */
 		float: right;
-	}
-	td {
-		border: solid 1px black;
 	}
 	td.action {
 		width: 20px;
@@ -58,7 +58,7 @@
 		width: 40px;
 	}
 
-	body.example {
+	body {
 		background-color: #f5f5f5;
 		font-family: 'Roboto', sans-serif;
 		color: #454545;
@@ -78,6 +78,28 @@
 	}
 	tr.fancytree-folder td {
 		font-weight: bold;
+	}
+
+	td.node {
+		color: #30374B;
+	}
+
+	tr {
+		height: 1.2em;
+		padding: 0px;
+	}
+
+	td.total, td.number {
+		background-color: #E2E2E2;
+		font-weight: normal;
+		text-align: center;
+	}
+
+	td.unit {
+		background-color: #efefef;
+		font-weight: normal;
+		color: #616060;
+		text-align: center;
 	}
 
 	tr:hover {
@@ -101,6 +123,12 @@
 	span.fancytree-node.fancytree-folder.fancytree-expanded > span.fancytree-icon {
 	    background-image: url("customFolderOpen.gif");
 	}
+
+	.bimviewer .editor-panel {
+		display: block;
+		width: 80%;
+		height: 100%;
+	}
 </style>
 
 <script type="text/javascript">
@@ -122,6 +150,40 @@ var apiZones = [];
 var zonesTree = [];
 
 $(function(){
+
+	function setCalcul(classe, parentMethod){
+	  if(Object.keys(calcul).indexOf(classe.notation) !== -1){
+	  	// A child method overrides it's parent method
+	  	var method = calcul[classe.notation];
+	  	classe.u = method.u;
+	  	classe.q = method.q;
+	  	if (method.d) { classe.d = method.d; }
+
+		  if (classe.children) {
+		    classe.children.forEach(child => {
+		      setCalcul(child, method);
+		    })
+		  }
+	  }else if(parentMethod){
+	  	classe.u = parentMethod.u;
+	  	classe.q = parentMethod.q;
+	  	if (parentMethod.d) { classe.d = parentMethod.d; }
+
+		  if(classe.children){
+		    classe.children.forEach(child => {
+		      setCalcul(child, parentMethod);
+		    })
+		  }
+	  }else{
+		  if(classe.children){
+		    classe.children.forEach(child => {
+		      setCalcul(child);
+		    })
+		  }
+		}
+	}
+
+	setCalcul(untec[0]);
 
 	var access_token = 'jimo46BqNoxj5ZHNg1r5Z7DuXLDDVi';
 	var cloud_baseurl = 'https://api-staging.bimdata.io';
@@ -172,232 +234,221 @@ $(function(){
 		return menu;
 	}
 
-	bimData.getZones(projectData, function(errMsg, zones){
-	    if (errMsg) {
-	        console.error("Failed to get zones data: " + errMsg);
-	        zones = {};
-	        return;
-	    }
-	    apiZones = zones;
-	    console.log(apiZones);
-	    apiZones.sort((a, b) => {
-          return a.name.localeCompare(b.name);
-      });
+  $("#tree").fancytree({
+  	icon: false,
+  	checkbox: true,
+  	titlesTabbable: true,     // Add all node titles to TAB chain
+  	quicksearch: true,        // Jump to nodes when pressing first character
+  	// source: SOURCE,
+  	source: untec,
+  	// source: zonesTree,
 
-	    zonesTree = createZonesTree(apiZones);
+  	extensions: ["edit", "dnd", "table", "gridnav"],
 
-	    $("#tree").fancytree({
-	    	icon: false,
-	    	checkbox: true,
-	    	titlesTabbable: true,     // Add all node titles to TAB chain
-	    	quicksearch: true,        // Jump to nodes when pressing first character
-	    	// source: SOURCE,
-	    	// source: { url: "ajax-tree-products.json"},
-	    	source: zonesTree,
+  	dnd: {
+  		preventVoidMoves: true,
+  		preventRecursiveMoves: true,
+  		autoExpandMS: 400,
+  		dragStart: function(node, data) {
+  			return true;
+  		},
+  		dragEnter: function(node, data) {
+  			// return ["before", "after"];
+  			return true;
+  		},
+  		dragDrop: function(node, data) {
+  			data.otherNode.moveTo(node, data.hitMode);
+  		}
+  	},
+  	edit: {
+  		triggerStart: ["f2", "shift+click", "mac+enter"],
+  		close: function(event, data) {
+  			if( data.save && data.isNew ){
+  				// Quick-enter: add new nodes until we hit [enter] on an empty title
+  				$("#tree").trigger("nodeCommand", {cmd: "addSibling"});
+  			}
+  		}
+  	},
+  	table: {
+  		indentation: 20,
+  		nodeColumnIdx: 1,
+  		checkboxColumnIdx: 0
+  	},
+  	gridnav: {
+  		autofocusInput: false,
+  		handleCursorKeys: true
+  	},
 
-	    	extensions: ["edit", "dnd", "table", "gridnav"],
+  	lazyLoad: function(event, data) {
+  		data.result = {url: "../demo/ajax-sub2.json"};
+  	},
+  	createNode: function(event, data) {
+  		var node = data.node,
+  			$tdList = $(node.tr).find(">td");
 
-	    	dnd: {
-	    		preventVoidMoves: true,
-	    		preventRecursiveMoves: true,
-	    		autoExpandMS: 400,
-	    		dragStart: function(node, data) {
-	    			return true;
-	    		},
-	    		dragEnter: function(node, data) {
-	    			// return ["before", "after"];
-	    			return true;
-	    		},
-	    		dragDrop: function(node, data) {
-	    			data.otherNode.moveTo(node, data.hitMode);
-	    		}
-	    	},
-	    	edit: {
-	    		triggerStart: ["f2", "shift+click", "mac+enter"],
-	    		close: function(event, data) {
-	    			if( data.save && data.isNew ){
-	    				// Quick-enter: add new nodes until we hit [enter] on an empty title
-	    				$("#tree").trigger("nodeCommand", {cmd: "addSibling"});
-	    			}
-	    		}
-	    	},
-	    	table: {
-	    		indentation: 20,
-	    		nodeColumnIdx: 1,
-	    		checkboxColumnIdx: 0
-	    	},
-	    	gridnav: {
-	    		autofocusInput: false,
-	    		handleCursorKeys: true
-	    	},
+  		// Span the remaining columns if it's a folder.
+  		// We can do this in createNode instead of renderColumns, because
+  		// the `isFolder` status is unlikely to change later
+  		if( ! node.isFolder() ) {
+  			$tdList.eq(1)
+  				.prop("colspan", 4)
+  				.nextAll('.zoneonly').remove();
+  		}
+  	},
+  	renderColumns: function(event, data) {
+  		var node = data.node,
+  			$tdList = $(node.tr).find(">td");
+  			console.log(node)
 
-	    	lazyLoad: function(event, data) {
-	    		data.result = {url: "../demo/ajax-sub2.json"};
-	    	},
-	    	createNode: function(event, data) {
-	    		var node = data.node,
-	    			$tdList = $(node.tr).find(">td");
+  		// (Index #0 is rendered by fancytree by adding the checkbox)
+  		// (Index #2 is rendered by fancytree)
+  		// Set column #3 info from node data:
+  		$tdList.eq(4).css('background-color', node.data.color);
+  		// Static markup (more efficiently defined as html row template):
+  		// $tdList.eq(3).html("<input type='input' value='" + "" + "'>");
+  		// ...
+  		$tdList.eq(6).html(entierAleatoire(10, 200));
+  		if(node.data.notation && node.data.u){
+  			$tdList.eq(7).html(`<span title="${node.data.q}">${node.data.u}</span>`);	
+  		}
+  		$tdList.eq(8).html(entierAleatoire(1, 50));
+  	}
+  }).on("nodeCommand", function(event, data){
+  	// Custom event handler that is triggered by keydown-handler and
+  	// context menu:
+  	var refNode, moveMode,
+  		tree = $(this).fancytree("getTree"),
+  		node = tree.getActiveNode();
 
-	    		// Span the remaining columns if it's a folder.
-	    		// We can do this in createNode instead of renderColumns, because
-	    		// the `isFolder` status is unlikely to change later
-	    		if( ! node.isFolder() ) {
-	    			$tdList.eq(1)
-	    				.prop("colspan", 4)
-	    				.nextAll('.zoneonly').remove();
-	    		}
-	    	},
-	    	renderColumns: function(event, data) {
-	    		var node = data.node,
-	    			$tdList = $(node.tr).find(">td");
+  	switch( data.cmd ) {
+  	case "moveUp":
+  		refNode = node.getPrevSibling();
+  		if( refNode ) {
+  			node.moveTo(refNode, "before");
+  			node.setActive();
+  		}
+  		break;
+  	case "moveDown":
+  		refNode = node.getNextSibling();
+  		if( refNode ) {
+  			node.moveTo(refNode, "after");
+  			node.setActive();
+  		}
+  		break;
+  	case "indent":
+  		refNode = node.getPrevSibling();
+  		if( refNode ) {
+  			node.moveTo(refNode, "child");
+  			refNode.setExpanded();
+  			node.setActive();
+  		}
+  		break;
+  	case "outdent":
+  		if( !node.isTopLevel() ) {
+  			node.moveTo(node.getParent(), "after");
+  			node.setActive();
+  		}
+  		break;
+  	case "rename":
+  		node.editStart();
+  		break;
+  	case "remove":
+  		refNode = node.getNextSibling() || node.getPrevSibling() || node.getParent();
+  		node.remove();
+  		if( refNode ) {
+  			refNode.setActive();
+  		}
+  		break;
+  	case "addChild":
+  		node.editCreateNode("child", "");
+  		break;
+  	case "addSibling":
+  		node.editCreateNode("after", "");
+  		break;
+  	case "cut":
+  		CLIPBOARD = {mode: data.cmd, data: node};
+  		break;
+  	case "copy":
+  		CLIPBOARD = {
+  			mode: data.cmd,
+  			data: node.toDict(function(n){
+  				delete n.key;
+  			})
+  		};
+  		break;
+  	case "clear":
+  		CLIPBOARD = null;
+  		break;
+  	case "paste":
+  		if( CLIPBOARD.mode === "cut" ) {
+  			// refNode = node.getPrevSibling();
+  			CLIPBOARD.data.moveTo(node, "child");
+  			CLIPBOARD.data.setActive();
+  		} else if( CLIPBOARD.mode === "copy" ) {
+  			node.addChildren(CLIPBOARD.data).setActive();
+  		}
+  		break;
+  	default:
+  		alert("Unhandled command: " + data.cmd);
+  		return;
+  	}
 
-	    		// (Index #0 is rendered by fancytree by adding the checkbox)
-	    		// (Index #2 is rendered by fancytree)
-	    		// Set column #3 info from node data:
-	    		$tdList.eq(4).css('background-color', node.data.color);
-	    		// Static markup (more efficiently defined as html row template):
-	    		// $tdList.eq(3).html("<input type='input' value='" + "" + "'>");
-	    		// ...
-	    		$tdList.eq(6).html(entierAleatoire(1, 50) + ' m<sup>2</sup>');
-	    	}
-	    }).on("nodeCommand", function(event, data){
-	    	// Custom event handler that is triggered by keydown-handler and
-	    	// context menu:
-	    	var refNode, moveMode,
-	    		tree = $(this).fancytree("getTree"),
-	    		node = tree.getActiveNode();
+  // }).on("click dblclick", function(e){
+  // 	console.log( e, $.ui.fancytree.eventToString(e) );
 
-	    	switch( data.cmd ) {
-	    	case "moveUp":
-	    		refNode = node.getPrevSibling();
-	    		if( refNode ) {
-	    			node.moveTo(refNode, "before");
-	    			node.setActive();
-	    		}
-	    		break;
-	    	case "moveDown":
-	    		refNode = node.getNextSibling();
-	    		if( refNode ) {
-	    			node.moveTo(refNode, "after");
-	    			node.setActive();
-	    		}
-	    		break;
-	    	case "indent":
-	    		refNode = node.getPrevSibling();
-	    		if( refNode ) {
-	    			node.moveTo(refNode, "child");
-	    			refNode.setExpanded();
-	    			node.setActive();
-	    		}
-	    		break;
-	    	case "outdent":
-	    		if( !node.isTopLevel() ) {
-	    			node.moveTo(node.getParent(), "after");
-	    			node.setActive();
-	    		}
-	    		break;
-	    	case "rename":
-	    		node.editStart();
-	    		break;
-	    	case "remove":
-	    		refNode = node.getNextSibling() || node.getPrevSibling() || node.getParent();
-	    		node.remove();
-	    		if( refNode ) {
-	    			refNode.setActive();
-	    		}
-	    		break;
-	    	case "addChild":
-	    		node.editCreateNode("child", "");
-	    		break;
-	    	case "addSibling":
-	    		node.editCreateNode("after", "");
-	    		break;
-	    	case "cut":
-	    		CLIPBOARD = {mode: data.cmd, data: node};
-	    		break;
-	    	case "copy":
-	    		CLIPBOARD = {
-	    			mode: data.cmd,
-	    			data: node.toDict(function(n){
-	    				delete n.key;
-	    			})
-	    		};
-	    		break;
-	    	case "clear":
-	    		CLIPBOARD = null;
-	    		break;
-	    	case "paste":
-	    		if( CLIPBOARD.mode === "cut" ) {
-	    			// refNode = node.getPrevSibling();
-	    			CLIPBOARD.data.moveTo(node, "child");
-	    			CLIPBOARD.data.setActive();
-	    		} else if( CLIPBOARD.mode === "copy" ) {
-	    			node.addChildren(CLIPBOARD.data).setActive();
-	    		}
-	    		break;
-	    	default:
-	    		alert("Unhandled command: " + data.cmd);
-	    		return;
-	    	}
+  }).on("keydown", function(e){
+  	var cmd = null;
 
-	    // }).on("click dblclick", function(e){
-	    // 	console.log( e, $.ui.fancytree.eventToString(e) );
-
-	    }).on("keydown", function(e){
-	    	var cmd = null;
-
-	    	// console.log(e.type, $.ui.fancytree.eventToString(e));
-	    	switch( $.ui.fancytree.eventToString(e) ) {
-	    	case "ctrl+shift+n":
-	    	case "meta+shift+n": // mac: cmd+shift+n
-	    		cmd = "addChild";
-	    		break;
-	    	case "ctrl+c":
-	    	case "meta+c": // mac
-	    		cmd = "copy";
-	    		break;
-	    	case "ctrl+v":
-	    	case "meta+v": // mac
-	    		cmd = "paste";
-	    		break;
-	    	case "ctrl+x":
-	    	case "meta+x": // mac
-	    		cmd = "cut";
-	    		break;
-	    	case "ctrl+n":
-	    	case "meta+n": // mac
-	    		cmd = "addSibling";
-	    		break;
-	    	case "del":
-	    	case "meta+backspace": // mac
-	    		cmd = "remove";
-	    		break;
-	    	// case "f2":  // already triggered by ext-edit pluging
-	    	// 	cmd = "rename";
-	    	// 	break;
-	    	case "ctrl+up":
-	    		cmd = "moveUp";
-	    		break;
-	    	case "ctrl+down":
-	    		cmd = "moveDown";
-	    		break;
-	    	case "ctrl+right":
-	    	case "ctrl+shift+right": // mac
-	    		cmd = "indent";
-	    		break;
-	    	case "ctrl+left":
-	    	case "ctrl+shift+left": // mac
-	    		cmd = "outdent";
-	    	}
-	    	if( cmd ){
-	    		$(this).trigger("nodeCommand", {cmd: cmd});
-	    		// e.preventDefault();
-	    		// e.stopPropagation();
-	    		return false;
-	    	}
-	    });
-
-	});
+  	// console.log(e.type, $.ui.fancytree.eventToString(e));
+  	switch( $.ui.fancytree.eventToString(e) ) {
+  	case "ctrl+shift+n":
+  	case "meta+shift+n": // mac: cmd+shift+n
+  		cmd = "addChild";
+  		break;
+  	case "ctrl+c":
+  	case "meta+c": // mac
+  		cmd = "copy";
+  		break;
+  	case "ctrl+v":
+  	case "meta+v": // mac
+  		cmd = "paste";
+  		break;
+  	case "ctrl+x":
+  	case "meta+x": // mac
+  		cmd = "cut";
+  		break;
+  	case "ctrl+n":
+  	case "meta+n": // mac
+  		cmd = "addSibling";
+  		break;
+  	case "del":
+  	case "meta+backspace": // mac
+  		cmd = "remove";
+  		break;
+  	// case "f2":  // already triggered by ext-edit pluging
+  	// 	cmd = "rename";
+  	// 	break;
+  	case "ctrl+up":
+  		cmd = "moveUp";
+  		break;
+  	case "ctrl+down":
+  		cmd = "moveDown";
+  		break;
+  	case "ctrl+right":
+  	case "ctrl+shift+right": // mac
+  		cmd = "indent";
+  		break;
+  	case "ctrl+left":
+  	case "ctrl+shift+left": // mac
+  		cmd = "outdent";
+  	}
+  	if( cmd ){
+  		$(this).trigger("nodeCommand", {cmd: cmd});
+  		// e.preventDefault();
+  		// e.stopPropagation();
+  		return false;
+  	}
+  });
 
 	/*
 	 * Tooltips
@@ -442,7 +493,7 @@ $(function(){
 </script>
 </head>
 
-<body class="example">
+<body>
 	<h1>Example: tree grid with keyboard navigation, DnD, and editing capabilites </h1>
 	<div class="description">
 		Bringing it all together: this sample combines different extensions and
@@ -475,6 +526,7 @@ $(function(){
 		<label>Fake input:<input id="input1"/></label>
 	</div>
 	<div class="bimviewer">
+		<div class="editor-panel">
 	<table id="tree">
 		<colgroup>
 		<col width="30px">
@@ -483,11 +535,14 @@ $(function(){
 		<col width="50px">
 		<col width="50px">
 		<col width="30px">
-		<col width="30px">
+		<col width="50px">
+		<col width="50px">
 		<col width="50px">
 		</colgroup>
 		<thead>
 			<tr>
+				<th></th>
+				<th></th>
 				<th></th>
 				<th></th>
 				<th></th>
@@ -506,12 +561,14 @@ $(function(){
 				<td class="add action onhover zoneonly"><span>+</span></td>
 				<td class="color action zoneonly"></td>
 				<td class="delete action">Del</td>
-				<td class="surface">Surface</td>
+				<td class="number"></td>
+				<td class="unit"></td>
+				<td class="total"></td>
 			</tr>
 		</tbody>
 	</table>
 	</div>
-
+</div>
 	<!-- Start_Exclude: This block is not part of the sample code -->
 	<hr>
 	<p class="sample-links  no_code">
