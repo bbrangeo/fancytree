@@ -9,6 +9,7 @@
 /node_modules
 /doc/screenshots
 /src/skin-custom-*
+/src/skin-bimdata/*.css
 *.log
 sauce_connect.*
 .pyftpsync-meta.json
